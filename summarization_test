@@ -1,0 +1,56 @@
+import torch
+import re
+from transformers import AutoTokenizer, BartForConditionalGeneration
+
+# 모델과 토크나이저 로드
+tokenizer = AutoTokenizer.from_pretrained('gogamza/kobart-summarization')
+model = BartForConditionalGeneration.from_pretrained('gogamza/kobart-summarization')
+
+text = """
+(서울=뉴스1) 권혜정 기자 = 오세훈 서울시장이 자신의 출신지 등에 대해 허위 정보를 퍼뜨린 이들을 경찰에 고소했다.
+
+15일 서울시에 따르면 오 시장은 인터넷 매체 기자인 박모씨 등 5명을 명예훼손(정보통신망 이용촉진 및 정보보호 등에 관한 법률) 혐의로 처벌해달라는 내용이 담긴 고소장을 지난해 12월 27일 서울남대문경찰서에 제출했다.
+
+오 시장은 고소장에서 "인터넷 매체 기자인 박 모 씨와 방 모 씨가 해당 매체 사이트에 '전라도 담양이 고향인 오세훈에게 속았다'라는 제목으로 '매국노', '수박처럼 겉은 파랗지만 속은 빨갱이' 등의 모욕적 표현이 담긴 기사를 게시해 명예가 훼손됐다"고 주장했다.
+
+서울시에 따르면 오 시장은 용인 해주 오씨 추탄공파 13대손으로 대대로 서울에서 살아왔다. 모친은 경북 상주 출신이다. 오 시장은 서울 성동구 성수동 태생으로 유년시절은 서울 강북구 삼양동에서 보내는 등 전남 담양과는 연고 자체가 없다.
+
+또 오 시장은 포털 사이트 카페 등에 오 시장에 대한 허위 정보를 게시한 김 모 씨도 함께 고소했다. 김 씨는 오 시장을 두고 "낮엔 우파, 밤엔 좌파"라는 제목의 글을 올려 TBS가 김어준 씨에게 수억 원의 연봉을 지급한다거나 오 시장의 반대로 TBS에서 김어준 씨를 물러나게 하지 못했다는 등의 허위 정보를 포털 사이트 카페 등에 게시했다.
+
+이 역시 사실과 다르다. 서울시의회는 지난 2022년 11월 일명 'TBS 지원 폐지 조례안'을 가결, 지난해 6월 서울시는 TBS에 대한 예산 지원을 중단했다. 김어준 씨는 이에 앞선 2022년 12월 라디오 프로그램 '김어준의 뉴스공장'에서 자진하차한 바 있다.
+
+김 씨는 또 해당 게시글에서 "서울시가 민노총(전국민주노동조합총연맹)에 사무실을 공짜로 빌려주고 있다"라고도 주장했다. 이는 서울시가 2023년 11월 민노총을 상대로 강북노동자복지관 민간위탁 만료에 따른 퇴거를 요청하고 결국 명도소송에 따른 강제조정 결정에 따라 퇴거 조치한 사실과 배치된다.
+
+서울시는 가짜뉴스들의 형식과 내용이 동일, 누군가 조직적으로 유포하고 있는 것으로 파악된다고 전했다.
+
+한편 서울시는 이와 같은 허위 정보 생성‧유포자에 대해 강경 대응하겠다는 방침을 정한 것으로 알려졌다. 허위 정보가 소셜네트워크서비스(SNS) 등을 통해 빠르게 확산하면서 오 시장 개인의 명예뿐 아니라 시정에 대한 신뢰에도 불신을 초래하고 있기 때문이다.
+
+서울시 관계자는 "이번 고소는 허위 정보가 버젓이 유통되는 행태에 경종을 울릴 것"이라며 "앞으로도 시정에 막대한 영향을 미치는 허위 정보와 왜곡 사례를 수집하는 즉시 추가로 경찰에 수사를 의뢰하겠다"고 강조했다.
+
+"""
+
+# 입력 텍스트 인코딩 (batch 처리)
+inputs = tokenizer(text, return_tensors="pt", max_length=1024, truncation=True)
+
+# 요약 생성 (beam search 등 옵션 조정)
+summary_ids = model.generate(
+    inputs.input_ids,
+    num_beams=5,
+    max_length=150,
+    min_length=40,
+    early_stopping=True,
+    decoder_start_token_id=tokenizer.bos_token_id
+)
+
+# 생성된 요약 디코딩
+summary_text = tokenizer.decode(summary_ids.squeeze().tolist(), skip_special_tokens=True)
+
+# 마지막 문장 종료부호까지 포함하여 중간에 끊기지 않도록 후처리
+punctuations = ['.', '!', '?']
+last_idx = max(summary_text.rfind(p) for p in punctuations)
+if last_idx != -1:
+    complete_summary = summary_text[:last_idx+1].strip()
+else:
+    complete_summary = summary_text.strip()
+
+print(complete_summary)
