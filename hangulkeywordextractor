@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+import re
+from collections import Counter
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+from konlpy.tag import Okt
+import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (Windows의 경우, 다른 OS는 적절한 폰트로 변경)
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
+
+# 파일 경로 설정 (텍스트 파일 인코딩은 utf-8)
+file_path = r"C:\Users\light\OneDrive\바탕 화면\text+1.txt"
+
+with open(file_path, 'r', encoding='utf-8') as f:
+    text = f.read()
+
+# 불용어 리스트 (필요에 따라 추가 수정)
+stop_words = ['의', '가', '이', '은', '들', '는', '좀', '잘', '걍', '과', '도', '를', '으로', '에', '와', '한', '하다', '것 ','것', ' 것', '수', '등']
+
+# 불용어 제거: 단어 경계를 고려하여 대체
+for word in stop_words:
+    text = re.sub(r'\b' + re.escape(word) + r'\b', '', text)
+
+# KoNLP를 이용한 형태소 분석 및 명사 추출
+okt = Okt()
+tokens = okt.pos(text)
+nouns = [word for word, tag in tokens if tag == 'Noun']
+nouns = [word for word in nouns if word not in stop_words]
+# 빈도 분석
+freq = Counter(nouns)
+most_common = freq.most_common(20)
+
+# 막대그래프 그리기
+plt.figure(figsize=(10, 6))
+plt.bar([item[0] for item in most_common], [item[1] for item in most_common])
+plt.xlabel('명사')
+plt.ylabel('빈도')
+plt.title('상위 20개 명사 빈도')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# 워드클라우드 생성 (font_path는 사용 환경에 맞게 수정)
+wc = WordCloud(
+    font_path='c:/Windows/Fonts/malgun.ttf',  # Windows의 경우, 다른 OS는 경로 변경 필요
+    background_color='white',
+    width=800,
+    height=600
+)
+wc.generate_from_frequencies(freq)
+
+plt.figure(figsize=(10, 6))
+plt.imshow(wc, interpolation='bilinear')
+plt.axis('off')
+plt.tight_layout()
+plt.show()
